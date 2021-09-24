@@ -9,7 +9,7 @@ using System.Xml;
 namespace UltimateOutfit
 {
 
-    [BepInPlugin("notfood.plugins.UltimateOutfit", "UltimateOutfit", "1.0.0.0")]
+    [BepInPlugin("notfood.plugins.UltimateOutfit", "UltimateOutfit", "0.3.0.0")]
     public class UltimateOutfitMod : BaseUnityPlugin
     {
         const string CHARACTERS_FOLDER = "outfits";
@@ -200,10 +200,10 @@ namespace UltimateOutfit
             {
                 return replacement;
             }
-            
+
             replacement = Sprite.Create(texture,
                 sprite.rect,
-                sprite.pivot/sprite.pixelsPerUnit,
+                new Vector2(sprite.pivot.x/sprite.rect.width, sprite.pivot.y/sprite.rect.height),
                 sprite.pixelsPerUnit,
                 1,
                 SpriteMeshType.Tight,
