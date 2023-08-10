@@ -14,8 +14,8 @@ namespace UltimateOutfitSync
     [BepInPlugin("notfood.plugins.UltimateOutfitSync", "UltimateOutfitSync", "0.0.1.0")]
     public class UltimateOutfitMod : BaseUnityPlugin
     {
-        const string CHARACTERS_FOLDER = "synced_outfits";
-        const string TEXTURES_FOLDER = "synced_textures";
+        const string CHARACTERS_FOLDER = "outfits";
+        const string TEXTURES_FOLDER = "textures";
         const string METADATA = "metadata.svg";
         const string IMAGE = "override.png";
 
