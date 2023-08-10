@@ -10,7 +10,7 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <RootNamespace>UltimateOutfit</RootNamespace>
-    <AssemblyName>UltimateOutfitMod</AssemblyName>
+    <AssemblyName>UltimateOutfitSyncMod</AssemblyName>
     <OutputPath>..\..\plugins\UltimateOutfit</OutputPath>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>

@@ -7,6 +7,11 @@ using System.IO;
 using System.Xml;
 using System.Security.Cryptography;
 using System.Linq;
+using System.Reflection;
+
+[assembly: AssemblyVersion("0.0.1.0")]
+[assembly: AssemblyInformationalVersion("0.0.1.0")]
+[assembly: AssemblyProductAttribute("UltimateOutfitSync")]
 
 namespace UltimateOutfitSync
 {
