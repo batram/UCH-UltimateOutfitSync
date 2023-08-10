@@ -5,22 +5,27 @@ using HarmonyLib;
 using UnityEngine;
 using System.IO;
 using System.Xml;
+using System.Security.Cryptography;
+using System.Linq;
 
-namespace UltimateOutfit
+namespace UltimateOutfitSync
 {
 
-    [BepInPlugin("notfood.plugins.UltimateOutfit", "UltimateOutfit", "0.3.0.0")]
+    [BepInPlugin("notfood.plugins.UltimateOutfitSync", "UltimateOutfitSync", "0.0.1.0")]
     public class UltimateOutfitMod : BaseUnityPlugin
     {
-        const string CHARACTERS_FOLDER = "outfits";
-        const string TEXTURES_FOLDER = "textures";
+        const string CHARACTERS_FOLDER = "synced_outfits";
+        const string TEXTURES_FOLDER = "synced_textures";
         const string METADATA = "metadata.svg";
         const string IMAGE = "override.png";
 
         static readonly Dictionary<string, Sprite> spriteCache = new Dictionary<string, Sprite>();
         
-        internal static readonly Dictionary<string, Texture2D> CharacterOverrides = new Dictionary<string, Texture2D>();
-        internal static readonly Dictionary<string, Dictionary<string, Sprite>> OutfitOverrides = new Dictionary<string, Dictionary<string, Sprite>>();
+        internal static readonly Dictionary<string, int[]> CharacterOverrides = new Dictionary<string, int[]>();
+        internal static readonly Dictionary<string, int[]> OutfitOverrides = new Dictionary<string, int[]>();
+
+        internal static readonly Dictionary<string, Texture2D> HashCharacterOverrides = new Dictionary<string, Texture2D>();
+        internal static readonly Dictionary<string, Dictionary<string, Sprite>> HashOutfitOverrides = new Dictionary<string, Dictionary<string, Sprite>>();
 
         void Awake()
         {
@@ -126,8 +131,8 @@ namespace UltimateOutfit
             }
 
             Dictionary<string, Sprite> current = new Dictionary<string, Sprite>();
-            Texture2D texture = LoadTexture(textureFullPath);
-            foreach(var c in coordinates)
+            Texture2D texture = LoadTexture(textureFullPath, out int[] hash);
+            foreach (var c in coordinates)
             {
                 string key = c.id;
                 Rect area = new Rect(c.x, texture.height - c.height - c.y, c.width, c.height);
@@ -135,7 +140,11 @@ namespace UltimateOutfit
 
                 RegisterSpriteOverride(current, key, texture, area, pivot, pixelsPerUnit);
             }
-            OutfitOverrides.Add(animal, current);
+
+
+            Debug.Log("OutfitOverrides animal: " + animal);
+            OutfitOverrides.Add(animal, hash);
+            HashOutfitOverrides.Add(IntsToStringHash(hash), current);
         }
         #endregion
 
@@ -149,9 +158,9 @@ namespace UltimateOutfit
             foreach(string file in files)
             {
                 try {
-                    string fileName = Path.GetFileNameWithoutExtension(file);
-                    Texture2D texture = LoadTexture(file);
-                    RegisterTextureOverride(fileName, texture);
+                    //string fileName = Path.GetFileNameWithoutExtension(file);
+                    Texture2D texture = LoadTexture(file, out int[] hash);
+                    RegisterTextureOverride(texture.name, texture, hash);
                 }
                 catch(Exception e)
                 {
@@ -161,14 +170,67 @@ namespace UltimateOutfit
         }
         #endregion
 
+        public static string IntsToStringHash(int[] hash)
+        {
+            byte[] byteHash = new byte[hash.Length * sizeof(int)];
+            Buffer.BlockCopy(hash, 0, byteHash, 0, byteHash.Length);
+            return BitConverter.ToString(byteHash).Replace("-", "");
+        }
+
+        public static void ReplaceOutfit(Outfit skinOutfit, Dictionary<string, Sprite> dic)
+        {
+
+            for (int i = 0; i < skinOutfit.outputSprites.Length; i++)
+            {
+                var sprite = skinOutfit.outputSprites[i];
+
+                if (sprite == null) continue;
+
+                string index = sprite.name;
+
+                var replacement = dic.Keys.FirstOrDefault(k => index.EndsWith(k, StringComparison.OrdinalIgnoreCase));
+
+                if (replacement != null)
+                {
+                    skinOutfit.outputSprites[i] = dic[replacement];
+                }
+                else
+                {
+                    Debug.LogWarning($"Missing replacement for {skinOutfit.name} {index}");
+                }
+            }
+
+            skinOutfit.hueShift = 0f;
+            skinOutfit.saturationShift = 0f;
+            skinOutfit.valueShift = 0f;
+            skinOutfit.contrastShift = 1f;
+            skinOutfit.colorize = false;
+        }
+
         #region Sprite overriding
-        Texture2D LoadTexture(string path)
+        Texture2D LoadTexture(string path, out int[] hash)
         {
             byte[] data = File.ReadAllBytes(path);
 
-            Texture2D texture = new Texture2D(1,1, TextureFormat.ARGB32, false);
+            // Generate the hash
+            SHA256 sha256 = SHA256.Create();
+            byte[] hashBytes = sha256.ComputeHash(data);
+            //hash = BitConverter.ToString(hashBytes).Replace("-", "");
+            Debug.Log("hashBytes: " + hashBytes.Length + " bytes: " + hashBytes);
+
+            // Create a packed int array.
+            hash = new int[hashBytes.Length / 4];
+
+            // Pack the bytes into ints.
+            Buffer.BlockCopy(hashBytes, 0, hash, 0, hashBytes.Length);
+
+
+            Debug.Log("hashInt: " + hash.Length + " bytes: " + hash);
+            
+            Texture2D texture = new Texture2D(1, 1, TextureFormat.ARGB32, false);
             texture.LoadImage(data);
             texture.name = Path.GetFileNameWithoutExtension(path);
+            Debug.Log("texture.name: " + texture.name);
 
             return texture;
         }
@@ -181,9 +243,10 @@ namespace UltimateOutfit
             current.Add(sprite.name, sprite);
         }
 
-        void RegisterTextureOverride(string fileName, Texture2D texture)
+        void RegisterTextureOverride(string fileName, Texture2D texture, int[] hash)
         {
-            CharacterOverrides.Add(fileName, texture);
+            CharacterOverrides.Add(fileName, hash);
+            HashCharacterOverrides.Add(IntsToStringHash(hash), texture);
             texture.name = fileName;
             texture.filterMode = FilterMode.Point;
             texture.wrapMode = TextureWrapMode.Clamp;
@@ -203,7 +266,7 @@ namespace UltimateOutfit
 
             replacement = Sprite.Create(texture,
                 sprite.rect,
-                new Vector2(sprite.pivot.x/sprite.rect.width, sprite.pivot.y/sprite.rect.height),
+                new Vector2(sprite.pivot.x / sprite.rect.width, sprite.pivot.y / sprite.rect.height),
                 sprite.pixelsPerUnit,
                 1,
                 SpriteMeshType.Tight,

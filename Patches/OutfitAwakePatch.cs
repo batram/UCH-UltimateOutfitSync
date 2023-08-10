@@ -4,43 +4,26 @@ using System.Linq;
 using HarmonyLib;
 using UnityEngine;
 
-namespace UltimateOutfit
+namespace UltimateOutfitSync
 {
     [HarmonyPatch(typeof(Outfit), "Awake")]
     static class OutfitAwakePatch
     {
         static void Postfix(Outfit __instance)
         {
-            if (!UltimateOutfitMod.OutfitOverrides.TryGetValue(__instance.name, out Dictionary<string, Sprite> current))
+            if (UltimateOutfitMod.OutfitOverrides.TryGetValue(__instance.name, out int[] hash))
             {
-                return;
-            }
-
-            for(int i = 0; i < __instance.outputSprites.Length; i++)
-            {
-                var sprite = __instance.outputSprites[i];
-
-                if (sprite == null) continue;
-
-                string index = sprite.name;
-
-                var replacement = current.Keys.FirstOrDefault(k => index.EndsWith(k, StringComparison.OrdinalIgnoreCase));
-
-                if (replacement != null)
+                Debug.Log("OutfitAwakePatch found: " + __instance.name);
+                if (!UltimateOutfitMod.HashOutfitOverrides.TryGetValue(UltimateOutfitMod.IntsToStringHash(hash), out Dictionary<string, Sprite> current))
                 {
-                    __instance.outputSprites[i] = current[replacement];
-                }
-                else
-                {
-                    Debug.LogWarning($"Missing replacement for {__instance.name} {index}");
-                }
-            }
+                    Debug.Log("OutfitAwakePatch HashOutfitOverrides notfound: " + __instance.name);
 
-            __instance.hueShift = 0f;
-            __instance.saturationShift = 0f;
-            __instance.valueShift = 0f;
-            __instance.contrastShift = 1f;
-            __instance.colorize = false;
+                    return;
+                }
+                Debug.Log("OutfitAwakePatch HashOutfitOverrides found: " + __instance.name);
+
+                UltimateOutfitMod.ReplaceOutfit(__instance, current);
+            }
         }
     }
 }

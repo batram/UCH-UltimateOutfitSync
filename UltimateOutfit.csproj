@@ -1,7 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
-  
-  <PropertyGroup>
+	<PropertyGroup>
+		<!-- steam default: C:\Program Files (x86)\Steam\steamapps\common\Ultimate Chicken Horse\ -->
+		<UCHfolder>C:\Program Files (x86)\Steam\steamapps\common\Ultimate Chicken Horse\</UCHfolder>
+	</PropertyGroup>
+	
+	<PropertyGroup>
     <TargetFramework>net48</TargetFramework>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
@@ -18,28 +22,34 @@
     <PackageReference Include="Krafs.Publicizer" Version="1.0.1" />
 
     <Reference Include="BepInEx">
-      <HintPath>..\..\core\BepInEx.dll</HintPath>
+      <HintPath>$(UCHfolder)\BepInEx\core\BepInEx.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="0Harmony">
-      <HintPath>..\..\core\0Harmony.dll</HintPath>
+      <HintPath>$(UCHfolder)\BepInEx\core\0Harmony.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="Assembly-CSharp">
-      <HintPath>..\..\..\UltimateChickenHorse_Data\Managed\Assembly-CSharp.dll</HintPath>
+      <HintPath>$(UCHfolder)\UltimateChickenHorse_Data\Managed\Assembly-CSharp.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="com.unity.multiplayer-hlapi.Runtime">
+      <HintPath>$(UCHfolder)\UltimateChickenHorse_Data\Managed\com.unity.multiplayer-hlapi.Runtime.dll</HintPath>
+    </Reference>
     <Reference Include="UnityEngine">
-      <HintPath>..\..\..\UltimateChickenHorse_Data\Managed\UnityEngine.dll</HintPath>
+      <HintPath>$(UCHfolder)\UltimateChickenHorse_Data\Managed\UnityEngine.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="UnityEngine.CoreModule">
-      <HintPath>..\..\..\UltimateChickenHorse_Data\Managed\UnityEngine.CoreModule.dll</HintPath>
+      <HintPath>$(UCHfolder)\UltimateChickenHorse_Data\Managed\UnityEngine.CoreModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="UnityEngine.ImageConversionModule">
-      <HintPath>..\..\..\UltimateChickenHorse_Data\Managed\UnityEngine.ImageConversionModule.dll</HintPath>
+      <HintPath>$(UCHfolder)\UltimateChickenHorse_Data\Managed\UnityEngine.ImageConversionModule.dll</HintPath>
       <Private>False</Private>
+    </Reference>
+    <Reference Include="UnityEngine.UNETModule">
+      <HintPath>$(UCHfolder)\UltimateChickenHorse_Data\Managed\UnityEngine.UNETModule.dll</HintPath>
     </Reference>
   </ItemGroup>
 

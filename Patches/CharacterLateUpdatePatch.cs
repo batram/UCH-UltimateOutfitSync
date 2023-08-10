@@ -1,16 +1,19 @@
 using HarmonyLib;
 using UnityEngine;
 
-namespace UltimateOutfit
+namespace UltimateOutfitSync
 {
     [HarmonyPatch(typeof(Character), "LateUpdate")]
     static class CharacterLateUpdatePatch
     {
         static void Postfix(Character __instance)
         {
-            if (UltimateOutfitMod.CharacterOverrides.TryGetValue(__instance.CharacterSFXName, out Texture2D texture))
+            if (UltimateOutfitMod.CharacterOverrides.TryGetValue(__instance.CharacterSFXName, out int[] hash))
             {
-                __instance.sprite.sprite = UltimateOutfitMod.SpriteFromCache(__instance.sprite.sprite, texture);
+                if(UltimateOutfitMod.HashCharacterOverrides.TryGetValue(UltimateOutfitMod.IntsToStringHash(hash), out Texture2D texture))
+                {
+                    __instance.sprite.sprite = UltimateOutfitMod.SpriteFromCache(__instance.sprite.sprite, texture);
+                }
             }
         }
     }
