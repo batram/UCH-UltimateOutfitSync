@@ -45,29 +45,6 @@ namespace UltimateOutfitSync
                 Debug.Log("GetOutfitsAsArray: " + name + "  OutfitOverrides: " + UltimateOutfitMod.OutfitOverrides.TryGetValue(name, out _));
             }
         }
-        
-        /*
-        [HarmonyPatch(typeof(Character), "SetOutfitsFromArray", new Type[] { typeof(UnityEngine.Networking.SyncListInt) })]
-        static class SetOutfitsFromArraySyncListIntCtorPatch
-        {
-            static bool Prefix(Character __instance, SyncListInt outfitsSyncList)
-            {
-                int[] array = new int[outfitsSyncList.Count];
-                for (int i = 0; i < array.Length; i++)
-                {
-                    if (outfitsSyncList.Count > i)
-                    {
-                        array[i] = outfitsSyncList[i];
-                    }
-                    else
-                    {
-                        array[i] = -1;
-                    }
-                }
-                __instance.SetOutfitsFromArray(array);
-                return false;
-            }
-        }*/
 
         [HarmonyPatch(typeof(Character), "SetOutfitsFromArray", new Type[] { typeof(int[]) })]
         static class SetOutfitsFromArrayCtorPatch
@@ -75,16 +52,27 @@ namespace UltimateOutfitSync
             static void Postfix(Character __instance, ref int[] outfitsArray)
             {
                 Debug.Log("SetOutfitsFromArray length: " + outfitsArray.Length);
+
+                string name = MissingSkinIcon.ObjectName;
+                MissingSkinIcon missingSkin = __instance.nameTag.UCHNetIcon.transform.parent.Find(name)?.gameObject.GetComponent<MissingSkinIcon>();
+
+                if (missingSkin)
+                {
+                    //hide SkinMissing icon
+                    missingSkin.setIcon(false);
+                }
+
                 if (outfitsArray.Length >= OutfitArrayIndex + OutfitArrayLength)
                 {
                     int[] hash = new int[OutfitArrayLength];
                     Array.Copy(outfitsArray, OutfitArrayIndex, hash, 0, OutfitArrayLength);
-                    
+
                     Debug.Log("SetOutfitsFromArray hash: " + UltimateOutfitMod.IntsToStringHash(hash));
 
                     if (UltimateOutfitMod.HashCharacterOverrides.TryGetValue(UltimateOutfitMod.IntsToStringHash(hash), out Texture2D texture))
                     {
                         Debug.Log("SetOutfitsFromArray character overwrite: " + texture.name);
+                        return;
                     }
 
                     if (UltimateOutfitMod.HashOutfitOverrides.TryGetValue(UltimateOutfitMod.IntsToStringHash(hash), out Dictionary<string, Sprite> dic))
@@ -100,6 +88,26 @@ namespace UltimateOutfitSync
                                 Outfit skinOutfit = componentsInChildren[skinNum];
                                 UltimateOutfitMod.ReplaceOutfit(skinOutfit, dic);
                             }
+                        }
+
+                        return;
+                    }
+
+                    // missing skin for hash
+                    if (!missingSkin)
+                    {
+                        missingSkin = MissingSkinIcon.createMissingSkinIcon(__instance.nameTag, hash);
+                        missingSkin.setIcon(true);
+                        missingSkin.showWarnMessage(__instance.LocalizedName);
+                    }
+                    else
+                    {
+                        missingSkin.setIcon(true);
+
+                        if (UltimateOutfitMod.IntsToStringHash(missingSkin.hash) != UltimateOutfitMod.IntsToStringHash(hash))
+                        {
+                            missingSkin.hash = hash;
+                            missingSkin.showWarnMessage(__instance.LocalizedName);
                         }
                     }
                 }
