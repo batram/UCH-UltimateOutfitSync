@@ -11,7 +11,7 @@
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <RootNamespace>UltimateOutfit</RootNamespace>
     <AssemblyName>UltimateOutfitSyncMod</AssemblyName>
-    <OutputPath>..\..\plugins\UltimateOutfit</OutputPath>
+    <OutputPath>plugins\UltimateOutfitSync</OutputPath>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
     <DebugType>None</DebugType>
@@ -51,9 +51,27 @@
     <Reference Include="UnityEngine.UNETModule">
       <HintPath>$(UCHfolder)\UltimateChickenHorse_Data\Managed\UnityEngine.UNETModule.dll</HintPath>
     </Reference>
+	  <Reference Include="UnityEngine.UNETModule">
+		  <HintPath>$(UCHfolder)\UltimateChickenHorse_Data\Managed\UnityEngine.UI.dll</HintPath>
+	  </Reference>
   </ItemGroup>
 
   <ItemGroup>
     <Publicize Include="Assembly-CSharp" />
   </ItemGroup>
+
+	<PropertyGroup>
+		<PostBuildEvent>
+			if not exist  "$(UCHfolder)\BepInEx\plugins\" mkdir "$(UCHfolder)\BepInEx\plugins\"
+			if not exist  "$(UCHfolder)\BepInEx\plugins\UltimateOutfitSync\" mkdir "$(UCHfolder)\BepInEx\plugins\UltimateOutfitSync\"
+			copy "UltimateOutfitSyncMod.dll" "$(UCHfolder)\BepInEx\plugins\UltimateOutfitSync" /y
+		</PostBuildEvent>
+  </PropertyGroup>
+
+  <PropertyGroup>
+		<PreBuildEvent>
+			taskkill /f /fi "imagename eq UltimateChickenHorse.exe"
+		</PreBuildEvent>
+  </PropertyGroup>
+
 </Project>
