@@ -32,6 +32,8 @@ namespace UltimateOutfitSync
         internal static readonly Dictionary<string, Texture2D> HashCharacterOverrides = new Dictionary<string, Texture2D>();
         internal static readonly Dictionary<string, Dictionary<string, Sprite>> HashOutfitOverrides = new Dictionary<string, Dictionary<string, Sprite>>();
 
+        internal static readonly Dictionary<string, Tuple<string, string>> HashToPaths = new Dictionary<string, Tuple<string, string>>();
+
         void Awake()
         {
             new Harmony("notfood.UltimateOutfit").PatchAll();
@@ -60,6 +62,8 @@ namespace UltimateOutfitSync
                     {
                         using (XmlTextReader xmlReader = new XmlTextReader(metadataFile))
                         {
+                            xmlReader.XmlResolver = null;
+                            xmlReader.DtdProcessing = 0;
                             ReadMetadata(directory, xmlReader);
                         }
                     } catch (Exception e)
@@ -70,7 +74,7 @@ namespace UltimateOutfitSync
             }
         }
 
-        void ReadMetadata(string directory, XmlReader xmlReader)
+        public static void ReadMetadata(string directory, XmlReader xmlReader, byte[] textureBytes = null)
         {
             var coordinates = new List<SpriteCoordinates>();
 
@@ -87,7 +91,7 @@ namespace UltimateOutfitSync
                     }
                     else if (xmlReader.Name == "image")
                     {
-                        ReadTextureFromMetadata(xmlReader, directory, coordinates);
+                        ReadTextureFromMetadata(xmlReader, directory, coordinates, textureBytes);
 
                         coordinates.Clear();
                     }
@@ -102,7 +106,7 @@ namespace UltimateOutfitSync
             public float offsetX, offsetY;
         }
 
-        bool ReadCoordinatesFromMetadata(XmlReader xmlReader, out SpriteCoordinates coords)
+        static bool ReadCoordinatesFromMetadata(XmlReader xmlReader, out SpriteCoordinates coords)
         {
             coords = new SpriteCoordinates() {
                 id = xmlReader.GetAttribute("id")
@@ -116,27 +120,35 @@ namespace UltimateOutfitSync
                 && float.TryParse(xmlReader.GetAttribute("offset-y"), out coords.offsetY);
         }
 
-        void ReadTextureFromMetadata(XmlReader xmlReader, string directory, List<SpriteCoordinates> coordinates)
+        static void ReadTextureFromMetadata(XmlReader xmlReader, string directory, List<SpriteCoordinates> coordinates, byte[] textureBytes = null)
         {
             string animal = Path.GetFileName(directory);
+            string textureName = animal;
+            string textureFullPath = "";
 
-            int.TryParse(xmlReader.GetAttribute("pixelsPerUnit"), out int pixelsPerUnit);
-
-            string texturePath = xmlReader.GetAttribute("xlink:href");
-            if (texturePath == null)
+            if (textureBytes == null)
             {
-                Debug.LogError($"[UltimateOutfit] Error on {directory}: Texture \"{texturePath}\" is null");
-                return;
-            }
-            string textureFullPath = Path.Combine(directory, texturePath);
-            if (!File.Exists(textureFullPath))
-            {
-                Debug.LogError($"[UltimateOutfit] Error on {directory}: Texture \"{texturePath}\" not found");
-                return;
+                string texturePath = xmlReader.GetAttribute("xlink:href");
+                if (texturePath == null)
+                {
+                    Debug.LogError($"[UltimateOutfit] Error on {directory}: Texture \"{texturePath}\" is null");
+                    return;
+                }
+                textureFullPath = Path.Combine(directory, texturePath);
+                if (!File.Exists(textureFullPath))
+                {
+                    Debug.LogError($"[UltimateOutfit] Error on {directory}: Texture \"{texturePath}\" not found");
+                    return;
+                }
+                textureName = Path.GetFileNameWithoutExtension(textureFullPath);
+                textureBytes = File.ReadAllBytes(textureFullPath);
             }
 
             Dictionary<string, Sprite> current = new Dictionary<string, Sprite>();
-            Texture2D texture = LoadTexture(textureFullPath, out int[] hash);
+            Texture2D texture = LoadTexture(textureName, textureBytes, out int[] hash);
+
+            int.TryParse(xmlReader.GetAttribute("pixelsPerUnit"), out int pixelsPerUnit);
+
             foreach (var c in coordinates)
             {
                 string key = c.id;
@@ -150,6 +162,10 @@ namespace UltimateOutfitSync
             Debug.Log("OutfitOverrides animal: " + animal);
             OutfitOverrides.Add(animal, hash);
             HashOutfitOverrides.Add(IntsToStringHash(hash), current);
+            if (!textureFullPath.NullOrEmpty())
+            {
+                HashToPaths.Add(IntsToStringHash(hash), new Tuple<string, string>(Path.Combine(directory, METADATA), textureFullPath));
+            }
         }
         #endregion
 
@@ -163,8 +179,7 @@ namespace UltimateOutfitSync
             foreach(string file in files)
             {
                 try {
-                    //string fileName = Path.GetFileNameWithoutExtension(file);
-                    Texture2D texture = LoadTexture(file, out int[] hash);
+                    Texture2D texture = LoadTexture(Path.GetFileNameWithoutExtension(file), File.ReadAllBytes(file), out int[] hash);
                     RegisterTextureOverride(texture.name, texture, hash);
                 }
                 catch(Exception e)
@@ -180,6 +195,27 @@ namespace UltimateOutfitSync
             byte[] byteHash = new byte[hash.Length * sizeof(int)];
             Buffer.BlockCopy(hash, 0, byteHash, 0, byteHash.Length);
             return BitConverter.ToString(byteHash).Replace("-", "");
+        }
+
+        public static int[] BytesToInts(byte[] bytes)
+        {
+            // Create a packed int array.
+            int[] ints = new int[bytes.Length / 4];
+            for(int i = 0; i < ints.Length; i++)
+            {
+                ints[i] = BitConverter.ToInt32(bytes, i * 4);
+            }
+            // Pack the bytes into ints.
+            return ints;
+        }
+
+        public static byte[] IntsToBytes(int[] ints)
+        {
+            // Create a packed int array.
+            byte[] bytes = new byte[ints.Length * 4];
+
+            Buffer.BlockCopy(ints, 0, bytes, 0, bytes.Length);
+            return bytes;
         }
 
         public static void ReplaceOutfit(Outfit skinOutfit, Dictionary<string, Sprite> dic)
@@ -213,34 +249,27 @@ namespace UltimateOutfitSync
         }
 
         #region Sprite overriding
-        Texture2D LoadTexture(string path, out int[] hash)
+        static Texture2D LoadTexture(string name, byte[] data, out int[] hash)
         {
-            byte[] data = File.ReadAllBytes(path);
-
             // Generate the hash
             SHA256 sha256 = SHA256.Create();
             byte[] hashBytes = sha256.ComputeHash(data);
             //hash = BitConverter.ToString(hashBytes).Replace("-", "");
             Debug.Log("hashBytes: " + hashBytes.Length + " bytes: " + hashBytes);
 
-            // Create a packed int array.
-            hash = new int[hashBytes.Length / 4];
-
-            // Pack the bytes into ints.
-            Buffer.BlockCopy(hashBytes, 0, hash, 0, hashBytes.Length);
-
+            hash = BytesToInts(hashBytes);
 
             Debug.Log("hashInt: " + hash.Length + " bytes: " + hash);
             
             Texture2D texture = new Texture2D(1, 1, TextureFormat.ARGB32, false);
             texture.LoadImage(data);
-            texture.name = Path.GetFileNameWithoutExtension(path);
+            texture.name = name;
             Debug.Log("texture.name: " + texture.name);
 
             return texture;
         }
 
-        void RegisterSpriteOverride(Dictionary<string, Sprite> current, string key, Texture2D texture, Rect area, Vector2 pivot, int pixelsPerUnit)
+        static void RegisterSpriteOverride(Dictionary<string, Sprite> current, string key, Texture2D texture, Rect area, Vector2 pivot, int pixelsPerUnit)
         {
             Sprite sprite = Sprite.Create(texture, area, pivot, pixelsPerUnit, 1, SpriteMeshType.FullRect);
             sprite.name = key;

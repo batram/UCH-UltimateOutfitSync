@@ -10,6 +10,7 @@ namespace UltimateOutfitSync
         public static string ObjectName = "SkinMissing";
         public int[] hash;
         public NameTag nameTag;
+        public bool missing;
 
         public static MissingSkinIcon createMissingSkinIcon(NameTag nt, int[] hash)
         {
@@ -29,6 +30,8 @@ namespace UltimateOutfitSync
 
         public void setIcon(bool show)
         {
+            missing = show;
+
             GameObject go = this.gameObject;
             go.SetActive(show);
 

@@ -12,6 +12,16 @@ namespace UltimateOutfitSync
         public const int OutfitArrayIndex = 7;
         public const int OutfitArrayLength = 8;
 
+        public static int[] addHashToOutfitArray(int[] array, int[] hash)
+        {
+            if (array.Length < OutfitArrayIndex + OutfitArrayLength)
+            {
+                Array.Resize<int>(ref array, OutfitArrayIndex + OutfitArrayLength);
+            }
+            Array.Copy(hash, 0, array, OutfitArrayIndex, OutfitArrayLength);
+            return array;
+        }
+
         [HarmonyPatch(typeof(Character), "GetOutfitsAsArray")]
         static class GetOutfitsAsArrayCtorPatch
         {
@@ -32,17 +42,9 @@ namespace UltimateOutfitSync
                 //__instance.associatedGamePlayer.IsLocalPlayer
                 if (__instance.LocalPlayer != null && (UltimateOutfitMod.CharacterOverrides.TryGetValue(name, out int[] hash) || UltimateOutfitMod.OutfitOverrides.TryGetValue(name, out hash)))
                 {
-                    if (__result.Length < OutfitArrayIndex + OutfitArrayLength)
-                    {
-                        Array.Resize<int>(ref __result, OutfitArrayIndex + OutfitArrayLength);
-                    }
-                    Array.Copy(hash, 0, __result, OutfitArrayIndex, OutfitArrayLength);
+                    __result = addHashToOutfitArray(__result, hash);
                     Debug.Log("GetOutfitsAsArray: Array foxed");
-
                 }
-                Debug.Log("GetOutfitsAsArray: " + name + "  a: " + __result.Length + "  a[3]: " + __result[3] + " IsLocalPlayer: " + (__instance.LocalPlayer != null));
-                Debug.Log("GetOutfitsAsArray: " + name + "  CharacterOverrides: " + UltimateOutfitMod.CharacterOverrides.TryGetValue(name, out int[] _));
-                Debug.Log("GetOutfitsAsArray: " + name + "  OutfitOverrides: " + UltimateOutfitMod.OutfitOverrides.TryGetValue(name, out _));
             }
         }
 
@@ -109,6 +111,14 @@ namespace UltimateOutfitSync
                             missingSkin.hash = hash;
                             missingSkin.showWarnMessage(__instance.LocalizedName);
                         }
+                    }
+                }
+                else
+                {
+                    if (missingSkin)
+                    {
+                        missingSkin.setIcon(false);
+                        missingSkin.hash = new int[0];
                     }
                 }
             }
